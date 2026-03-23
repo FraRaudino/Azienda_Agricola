@@ -1,0 +1,46 @@
+services:
+  # Servizio Web (PHP + Apache)
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Servizio Database (MySQL)
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: azienda_agricola 
+    volumes:
+      - db_data:/var/lib/mysql
+      # Qui usiamo il nome reale del tuo file: database.sql
+      - ./src/sql/database.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  # Servizio Interfaccia Database (phpMyAdmin)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data: {}
