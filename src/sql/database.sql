@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS Prodotti_Confezionati (
     id_prodotto INT PRIMARY KEY,
     giacenza_pezzi INT DEFAULT 0,
     peso_netto_confezione DECIMAL(10,2),
-    data_confezionamento DATE,
     FOREIGN KEY (id_prodotto) REFERENCES Prodotti(id_prodotto) ON DELETE CASCADE
 );
 
@@ -78,7 +77,58 @@ CREATE TABLE IF NOT EXISTS Dettaglio_Vendite (
     FOREIGN KEY (id_prodotto) REFERENCES Prodotti(id_prodotto)
 );
 
+
+CREATE TABLE IF NOT EXISTS Confezionamenti (
+    id_confezionamento INT AUTO_INCREMENT PRIMARY KEY,
+    id_prodotto_riserva INT NOT NULL,
+    id_prodotto_confezionato INT NOT NULL,
+    data_confezionamento DATE NOT NULL,
+    quantita_utilizzata DECIMAL(10,2) NOT NULL,
+    numero_confezioni INT NOT NULL,
+    
+    FOREIGN KEY (id_prodotto_riserva) REFERENCES Prodotti(id_prodotto),
+    FOREIGN KEY (id_prodotto_confezionato) REFERENCES Prodotti(id_prodotto)
+);
+
+CREATE TABLE IF NOT EXISTS Lavorazioni (
+    id_lavorazione INT AUTO_INCREMENT PRIMARY KEY,
+    id_prodotto INT,
+    tipo_lavorazione VARCHAR(100),
+    data_lavorazione DATE,
+    FOREIGN KEY (id_prodotto) REFERENCES Prodotti(id_prodotto)
+);
+
 -- 6. Dati di Esempio (Per testare subito il sistema)
-INSERT INTO Categorie (nome) VALUES ('Frutta Fresca'), ('Olio'), ('Miele'), ('Marmellate');
-INSERT INTO Sedi (nome_sede) VALUES ('Dispensa Centrale'), ('Sede Produzione'), ('Negozio');
-INSERT INTO Clienti (nome, nickname) VALUES ('Cliente Occasionale', 'ClienteX'), ('Mario Rossi', 'Amico');
+INSERT INTO Categorie (nome) VALUES
+('Frutta Fresca'),
+('Olio'),
+('Miele'),
+('Marmellate');
+
+INSERT INTO Sedi (nome_sede) VALUES
+('Dispensa Centrale'),
+('Sede Produzione'),
+('Negozio');
+
+INSERT INTO Clienti (nome, nickname, contatto) VALUES
+('Cliente Occasionale', 'ClienteX', NULL),
+('Mario Rossi', 'Amico', 'mario@example.com');
+
+INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES
+('Miele sfuso', 3, 'Riserva'),
+('Miele vasetto 500g', 3, 'Confezionato'),
+('Mele fresche', 1, 'Fresco');
+
+INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES
+(1, 50.00, 'kg', CURDATE());
+
+INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES
+(2, 0, 0.50);
+
+INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES
+(3, 'kg');
+
+INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES
+(1, 12.00),
+(2, 8.00),
+(3, 3.50);

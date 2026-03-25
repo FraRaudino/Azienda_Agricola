@@ -33,6 +33,7 @@ $risultato = mysqli_query($conn, $sql);
             <li><a href="clienti.php">Gestione Clienti</a></li>
             <li><a href="report_vendite.php">Archivio Vendite</a></li>
             <li><a href="lavorazione.php">Lavorazione Riserve</a></li>
+            <li><a href="confezionamento.php">Confeziona prodotti</a></li>
             <li><a href="gestione_sistema.php">Impostazioni (Categorie/Sedi)</a></li>
         </ul>
     </nav>

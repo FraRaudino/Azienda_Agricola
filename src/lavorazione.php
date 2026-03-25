@@ -1,66 +1,53 @@
 <?php
 include 'config.php';
+
 $messaggio = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_riserva = intval($_POST['id_riserva']);
-    $id_confezionato = intval($_POST['id_confezionato']);
-    $quantita_da_togliere = floatval($_POST['quantita_kg_l']); // Quanti kg/L togliamo dalla riserva
-    $pezzi_prodotti = intval($_POST['pezzi_prodotti']); // Quante confezioni otteniamo
 
-    // 1. Controllo disponibilità nella Riserva
-    $res = mysqli_query($conn, "SELECT peso_totale_disponibile FROM Prodotti_Riserva WHERE id_prodotto = $id_riserva");
-    $row = mysqli_fetch_assoc($res);
+    $id_prodotto = isset($_POST['id_prodotto']) ? (int)$_POST['id_prodotto'] : 0;
+    $tipo_lavorazione = isset($_POST['tipo_lavorazione']) ? trim($_POST['tipo_lavorazione']) : '';
+    $data = date('Y-m-d');
 
-    if ($row['peso_totale_disponibile'] >= $quantita_da_togliere) {
-        // 2. Scaliamo dalla Riserva
-        mysqli_query($conn, "UPDATE Prodotti_Riserva SET peso_totale_disponibile = peso_totale_disponibile - $quantita_da_togliere WHERE id_prodotto = $id_riserva");
-        
-        // 3. Aggiungiamo ai Confezionati (e aggiorniamo la data di confezionamento)
-        mysqli_query($conn, "UPDATE Prodotti_Confezionati SET giacenza_pezzi = giacenza_pezzi + $pezzi_prodotti, data_confezionamento = NOW() WHERE id_prodotto = $id_confezionato");
-        
-        $messaggio = "<span style='color:green;'>Lavorazione completata! Magazzino aggiornato.</span>";
+    if ($id_prodotto <= 0 || $tipo_lavorazione === '') {
+        $messaggio = "<p style='color:red;'>Dati non validi.</p>";
     } else {
-        $messaggio = "<span style='color:red;'>Errore: Non hai abbastanza prodotto sfuso in riserva!</span>";
+        try {
+            $sql = "INSERT INTO Lavorazioni (id_prodotto, tipo_lavorazione, data_lavorazione)
+                    VALUES (?, ?, ?)";
+
+            $stmt = mysqli_prepare($conn, $sql);
+            mysqli_stmt_bind_param($stmt, "iss", $id_prodotto, $tipo_lavorazione, $data);
+            mysqli_stmt_execute($stmt);
+
+            $messaggio = "<p style='color:green;'>Lavorazione registrata con successo!</p>";
+
+        } catch (Exception $e) {
+            $messaggio = "<p style='color:red;'>Errore: " . htmlspecialchars($e->getMessage()) . "</p>";
+        }
     }
 }
-
-$riserve = mysqli_query($conn, "SELECT p.id_prodotto, p.nome, r.peso_totale_disponibile, r.unita_misura FROM Prodotti p JOIN Prodotti_Riserva r ON p.id_prodotto = r.id_prodotto");
-$confezionati = mysqli_query($conn, "SELECT p.id_prodotto, p.nome FROM Prodotti p JOIN Prodotti_Confezionati c ON p.id_prodotto = c.id_prodotto");
 ?>
 
 <!DOCTYPE html>
-<html>
-<head><title>Lavorazione Prodotti</title></head>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registra lavorazione</title>
+</head>
 <body>
-    <h1>Lavorazione: da Riserva a Confezionato</h1>
-    <a href="index.php">Torna alla Dashboard</a>
-    <p><?php echo $messaggio; ?></p>
+    <h1>Registra lavorazione</h1>
+    <p><a href="index.php">Torna alla dashboard</a></p>
 
-    <form method="POST">
-        <fieldset>
-            <legend>Scegli i prodotti</legend>
-            <p>Prodotto Riserva (Sorgente): 
-                <select name="id_riserva">
-                    <?php while($r = mysqli_fetch_assoc($riserve)) { ?>
-                        <option value="<?php echo $r['id_prodotto']; ?>"><?php echo $r['nome']; ?> (Disp: <?php echo $r['peso_totale_disponibile']." ".$r['unita_misura']; ?>)</option>
-                    <?php } ?>
-                </select>
-            </p>
+    <?php echo $messaggio; ?>
 
-            <p>Prodotto Confezionato (Destinazione): 
-                <select name="id_confezionato">
-                    <?php while($c = mysqli_fetch_assoc($confezionati)) { ?>
-                        <option value="<?php echo $c['id_prodotto']; ?>"><?php echo $c['nome']; ?></option>
-                    <?php } ?>
-                </select>
-            </p>
+    <form method="POST" action="lavorazione.php">
+        <input type="number" name="id_prodotto" placeholder="ID prodotto" required><br><br>
 
-            <p>Quantità di sfuso utilizzata (kg/L): <input type="number" step="0.01" name="quantita_kg_l" required></p>
-            <p>Numero di confezioni prodotte: <input type="number" name="pezzi_prodotti" required></p>
-            
-            <button type="submit">Registra Confezionamento</button>
-        </fieldset>
+        <input type="text" name="tipo_lavorazione" placeholder="Tipo lavorazione (es. essiccazione)" required><br><br>
+
+        <button type="submit">Registra lavorazione</button>
     </form>
 </body>
 </html>
