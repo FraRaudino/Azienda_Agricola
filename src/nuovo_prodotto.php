@@ -1,113 +1,139 @@
 <?php
 include 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = mysqli_real_escape_string($conn, $_POST['nome']);
+$messaggio = "";
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $nome = mysqli_real_escape_string($conn, trim($_POST['nome']));
     $id_categoria = intval($_POST['id_categoria']);
-    $tipo = $_POST['tipo'];
+    $tipo = mysqli_real_escape_string($conn, $_POST['tipo']);
     $prezzo = floatval($_POST['prezzo']);
-    $um = $_POST['um'];
+    $um = mysqli_real_escape_string($conn, $_POST['um']);
     $qta = floatval($_POST['quantita']);
-    $data_prod = $_POST['data_produzione'];
+    $data_prod = mysqli_real_escape_string($conn, $_POST['data_produzione']);
     $peso_netto = floatval($_POST['peso_netto']);
-    $id_sede = intval($_POST['id_sede']); 
 
-    $sql = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
-    
-    if (mysqli_query($conn, $sql)) {
-        $id_p = mysqli_insert_id($conn);
-        
-        mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
+    if ($nome == '' || $id_categoria <= 0 || $prezzo <= 0) {
+        $messaggio = "<div class='message error'>Controlla i dati inseriti.</div>";
+    } else {
+        $sql = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
 
-        if ($tipo == 'Fresco') {
-            mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES ($id_p, '$um')");
-        } 
-        
-        if ($tipo == 'Riserva') {
-            mysqli_query($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) 
-                                 VALUES ($id_p, $qta, '$um', '$data_prod')");
+        if (mysqli_query($conn, $sql)) {
+            $id_p = mysqli_insert_id($conn);
+            mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
+
+            if ($tipo == 'Fresco') {
+                mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES ($id_p, '$um')");
+            }
+
+            if ($tipo == 'Riserva') {
+                mysqli_query($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES ($id_p, $qta, '$um', '$data_prod')");
+            }
+
+            if ($tipo == 'Confezionato') {
+                $pezzi = intval($qta);
+                mysqli_query($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES ($id_p, $pezzi, $peso_netto)");
+            }
+
+            header("Location: index.php");
+            exit();
+        } else {
+            $messaggio = "<div class='message error'>Errore durante il salvataggio del prodotto.</div>";
         }
-        
-        if ($tipo == 'Confezionato') {
-            mysqli_query($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione, data_confezionamento) 
-                                 VALUES ($id_p, $qta, $peso_netto, '$data_prod')");
-        }
-        
-        header("Location: index.php");
     }
 }
 
-$res_cat = mysqli_query($conn, "SELECT * FROM Categorie");
-$res_sedi = mysqli_query($conn, "SELECT * FROM Sedi"); 
+$res_cat = mysqli_query($conn, "SELECT * FROM Categorie ORDER BY nome");
+$res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-    <title>Nuovo Prodotto</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuovo prodotto</title>
+    <link rel="stylesheet" href="app.css">
 </head>
 <body>
-    <h1>Inserimento Nuovo Prodotto</h1>
-    <form method="POST">
-        <fieldset>
-            <legend>Dati Base</legend>
-            <p>Nome Prodotto: <input type="text" name="nome" required></p>
-            
-            <p>Categoria: 
-                <select name="id_categoria">
-                    <?php while($c = mysqli_fetch_assoc($res_cat)) { ?>
-                        <option value="<?php echo $c['id_categoria']; ?>"><?php echo $c['nome']; ?></option>
-                    <?php } ?>
-                </select>
-            </p>
+    <div class="container">
+        <div class="page-header">
+            <h1>Nuovo prodotto</h1>
+            <p>Inserisci un prodotto fresco, di riserva o confezionato.</p>
+        </div>
 
-            <p>Tipo Prodotto (Fresco / Riserva sfusa / Confezionato): 
-                <select name="tipo">
-                    <option value="Fresco">Fresco (Vendita senza lavorazione)</option>
-                    <option value="Riserva">Riserva (Da conservare sfuso in grandi contenitori)</option>
-                    <option value="Confezionato">Confezionato (Vasetti, Bottiglie, ecc.)</option>
-                </select>
-            </p>
+        <?php echo $messaggio; ?>
 
-            <p>Prezzo Unitario al momento dell'inserimento (€): <input type="number" step="0.01" name="prezzo" required></p>
-            
-            <p>Luogo di conservazione:
-                <select name="id_sede">
-                    <?php while($s = mysqli_fetch_assoc($res_sedi)) { ?>
-                        <option value="<?php echo $s['id_sede']; ?>"><?php echo $s['nome_sede']; ?></option>
-                    <?php } ?>
-                </select>
-            </p>
-        </fieldset>
+        <div class="panel">
+            <form method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nome prodotto</label>
+                        <input type="text" name="nome" required>
+                    </div>
 
-        <fieldset>
-            <legend>Dettagli Quantità e Produzione (Compilare in base al tipo)</legend>
-            
-            <p>Unità di Misura (per Fresco o Riserva): 
-                <select name="um">
-                    <option value="kg">Chilogrammi (kg)</option>
-                    <option value="litro">Litri (L)</option>
-                    <option value="pezzo">Pezzo</option>
-                </select>
-            </p>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select name="id_categoria" required>
+                            <?php while ($c = mysqli_fetch_assoc($res_cat)) { ?>
+                                <option value="<?php echo $c['id_categoria']; ?>"><?php echo $c['nome']; ?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
 
-            <p>Quantità Iniziale / Giacenza Pezzi: <br>
-                <small><i>(Inserire il peso totale per le Riserve, o il numero di vasetti per i Confezionati)</i></small><br>
-                <input type="number" step="0.1" name="quantita" value="0">
-            </p>
+                    <div class="form-group">
+                        <label>Tipo prodotto</label>
+                        <select name="tipo" required>
+                            <option value="Fresco">Fresco</option>
+                            <option value="Riserva">Riserva</option>
+                            <option value="Confezionato">Confezionato</option>
+                        </select>
+                    </div>
 
-            <p>Data Lavorazione / Confezionamento: <br>
-                <input type="date" name="data_produzione" value="<?php echo date('Y-m-d'); ?>">
-            </p>
+                    <div class="form-group">
+                        <label>Prezzo unitario</label>
+                        <input type="number" step="0.01" min="0.01" name="prezzo" required>
+                    </div>
 
-            <p>Peso Netto Confezione (Solo per prodotti confezionati - es. 0.5 kg): <br>
-                <input type="number" step="0.01" name="peso_netto" value="0">
-            </p>
-        </fieldset>
+                    <div class="form-group">
+                        <label>Luogo di conservazione</label>
+                        <select name="id_sede">
+                            <?php while ($s = mysqli_fetch_assoc($res_sedi)) { ?>
+                                <option value="<?php echo $s['id_sede']; ?>"><?php echo $s['nome_sede']; ?></option>
+                            <?php } ?>
+                        </select>
+                    </div>
 
-        <br>
-        <button type="submit">Salva nel Database</button>
-        <a href="index.php">Torna alla Dashboard</a>
-    </form>
+                    <div class="form-group">
+                        <label>Unità di misura</label>
+                        <select name="um">
+                            <option value="kg">kg</option>
+                            <option value="litro">litro</option>
+                            <option value="pezzo">pezzo</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantità iniziale o giacenza</label>
+                        <input type="number" step="0.01" min="0" name="quantita" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Data produzione o lavorazione</label>
+                        <input type="date" name="data_produzione" value="<?php echo date('Y-m-d'); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Peso netto confezione</label>
+                        <input type="number" step="0.01" min="0" name="peso_netto" value="0">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit">Salva prodotto</button>
+                    <a class="btn btn-light" href="index.php">Torna alla dashboard</a>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

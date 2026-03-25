@@ -4,9 +4,7 @@ include 'config.php';
 $sql = "SELECT p.id_prodotto, p.nome, p.tipo, c.nome AS categoria,
                pr.peso_totale_disponibile, pr.unita_misura AS um_riserva,
                pc.giacenza_pezzi,
-               (SELECT prezzo_unitario FROM Listino_Prezzi 
-                WHERE id_prodotto = p.id_prodotto 
-                ORDER BY data_inizio_validita DESC LIMIT 1) AS prezzo_attuale
+               (SELECT prezzo_unitario FROM Listino_Prezzi WHERE id_prodotto = p.id_prodotto ORDER BY data_inizio_validita DESC LIMIT 1) AS prezzo_attuale
         FROM Prodotti p
         LEFT JOIN Categorie c ON p.id_categoria = c.id_categoria
         LEFT JOIN Prodotti_Riserva pr ON p.id_prodotto = pr.id_prodotto
@@ -15,91 +13,98 @@ $sql = "SELECT p.id_prodotto, p.nome, p.tipo, c.nome AS categoria,
 
 $risultato = mysqli_query($conn, $sql);
 ?>
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Azienda Agricola</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azienda Agricola</title>
+    <link rel="stylesheet" href="app.css">
 </head>
 <body>
+    <div class="hero">
+        <div class="container">
+            <h1>Gestione Azienda Agricola</h1>
+            <p>Produzione, confezionamento, vendite e giacenze in un unico pannello.</p>
+        </div>
+    </div>
 
-    <h1>Gestione Azienda Agricola</h1>
+    <div class="container">
+        <div class="nav-grid footer-space">
+            <a class="card menu-card" href="nuovo_prodotto.php"><strong>Aggiungi prodotto</strong><span>Inserisci un nuovo prodotto e il prezzo iniziale.</span></a>
+            <a class="card menu-card" href="vendita.php"><strong>Registra vendita</strong><span>Salva una vendita e aggiorna automaticamente le quantità.</span></a>
+            <a class="card menu-card" href="clienti.php"><strong>Gestione clienti</strong><span>Aggiungi clienti e consulta l'anagrafica.</span></a>
+            <a class="card menu-card" href="report_vendite.php"><strong>Archivio vendite</strong><span>Visualizza tutte le vendite e filtra per cliente.</span></a>
+            <a class="card menu-card" href="lavorazione.php"><strong>Lavorazioni</strong><span>Registra una lavorazione eseguita su un prodotto.</span></a>
+            <a class="card menu-card" href="confezionamento.php"><strong>Confezionamento</strong><span>Trasforma un prodotto di riserva in confezioni vendibili.</span></a>
+            <a class="card menu-card" href="gestione_sistema.php"><strong>Impostazioni</strong><span>Gestisci categorie, sedi e prodotti del sistema.</span></a>
+        </div>
 
-    <nav>
-        <ul>
-            <li><a href="nuovo_prodotto.php">Aggiungi Nuovo Prodotto</a></li>
-            <li><a href="vendita.php">Registra Vendita</a></li>
-            <li><a href="clienti.php">Gestione Clienti</a></li>
-            <li><a href="report_vendite.php">Archivio Vendite</a></li>
-            <li><a href="lavorazione.php">Lavorazione Riserve</a></li>
-            <li><a href="confezionamento.php">Confeziona prodotti</a></li>
-            <li><a href="gestione_sistema.php">Impostazioni (Categorie/Sedi)</a></li>
-        </ul>
-    </nav>
+        <div class="panel table-wrap">
+            <h2>Inventario prodotti e giacenze</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prodotto</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
+                        <th>Prezzo attuale</th>
+                        <th>Giacenza o peso</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (mysqli_num_rows($risultato) > 0) { ?>
+                        <?php while ($row = mysqli_fetch_assoc($risultato)) { ?>
+                            <tr>
+                                <td><?php echo $row['nome']; ?></td>
+                                <td><?php echo $row['categoria']; ?></td>
+                                <td><?php echo $row['tipo']; ?></td>
+                                <td>€ <?php echo number_format($row['prezzo_attuale'], 2, ',', '.'); ?></td>
+                                <td>
+                                    <?php
+                                    if ($row['tipo'] == 'Fresco') {
+                                        echo 'Disponibilità variabile';
+                                    }
+                                    if ($row['tipo'] == 'Riserva') {
+                                        echo $row['peso_totale_disponibile'] . ' ' . $row['um_riserva'];
+                                    }
+                                    if ($row['tipo'] == 'Confezionato') {
+                                        echo $row['giacenza_pezzi'] . ' pezzi';
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php
+                                    if ($row['tipo'] == 'Fresco') {
+                                        echo "<span class='badge soft'>In stagione</span>";
+                                    } else {
+                                        $qta = 0;
+                                        if ($row['tipo'] == 'Riserva') {
+                                            $qta = $row['peso_totale_disponibile'];
+                                        }
+                                        if ($row['tipo'] == 'Confezionato') {
+                                            $qta = $row['giacenza_pezzi'];
+                                        }
 
-    <hr>
-
-    <h2>Inventario Prodotti e Giacenze</h2>
-
-   <table style="border-collapse: collapse; width: 100%;">
-    <thead>
-        <tr style="background-color: #f2f2f2;">
-            <th style="border: 1px solid #ccc; padding: 8px;">Prodotto</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Categoria</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Tipo</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Prezzo Attuale</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Giacenza / Peso</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Stato</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php 
-        if (mysqli_num_rows($risultato) > 0) {
-            while($row = mysqli_fetch_assoc($risultato)) {
-        ?>
-                <tr>
-                    <td style="border: 1px solid #ccc; padding: 8px;"><?php echo $row['nome']; ?></td>
-                    <td style="border: 1px solid #ccc; padding: 8px;"><?php echo $row['categoria']; ?></td>
-                    <td style="border: 1px solid #ccc; padding: 8px;"><?php echo $row['tipo']; ?></td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">€ <?php echo number_format($row['prezzo_attuale'], 2, ',', '.'); ?></td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">
-                        <?php 
-                            if ($row['tipo'] == 'Fresco') {
-                                echo "Disponibilità variabile";
-                            } elseif ($row['tipo'] == 'Riserva') {
-                                echo $row['peso_totale_disponibile'] . " " . $row['um_riserva'];
-                            } elseif ($row['tipo'] == 'Confezionato') {
-                                echo $row['giacenza_pezzi'] . " pezzi";
-                            }
-                        ?>
-                    </td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">
-                        <?php 
-                            if ($row['tipo'] == 'Fresco') {
-                                echo "In Stagione";
-                            } else {
-                                $qta = ($row['tipo'] == 'Riserva') ? $row['peso_totale_disponibile'] : $row['giacenza_pezzi'];
-                                if ($qta <= 0) {
-                                    echo "<strong style='color:red;'>ESAURITO</strong>";
-                                } else {
-                                    echo "Disponibile";
-                                }
-                            }
-                        ?>
-                    </td>
-                </tr>
-        <?php 
-            } 
-        } else { 
-        ?>
-            <tr>
-                <td colspan="6" style="border: 1px solid #ccc; padding: 8px; text-align: center;">
-                    Nessun prodotto trovato. <a href="nuovo_prodotto.php">Inserisci il primo!</a>
-                </td>
-            </tr>
-        <?php 
-        } 
-        ?>
-    </tbody>
-</table>
+                                        if ($qta <= 0) {
+                                            echo "<span class='badge stop'>Esaurito</span>";
+                                        } else {
+                                            echo "<span class='badge ok'>Disponibile</span>";
+                                        }
+                                    }
+                                    ?>
+                                </td>
+                            </tr>
+                        <?php } ?>
+                    <?php } else { ?>
+                        <tr>
+                            <td colspan="6">Nessun prodotto trovato.</td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

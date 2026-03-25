@@ -2,52 +2,68 @@
 include 'config.php';
 
 $messaggio = "";
+$prodotti = mysqli_query($conn, "SELECT id_prodotto, nome, tipo FROM Prodotti ORDER BY nome");
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $id_prodotto = isset($_POST['id_prodotto']) ? (int)$_POST['id_prodotto'] : 0;
-    $tipo_lavorazione = isset($_POST['tipo_lavorazione']) ? trim($_POST['tipo_lavorazione']) : '';
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id_prodotto = intval($_POST['id_prodotto']);
+    $tipo_lavorazione = mysqli_real_escape_string($conn, trim($_POST['tipo_lavorazione']));
     $data = date('Y-m-d');
 
-    if ($id_prodotto <= 0 || $tipo_lavorazione === '') {
-        $messaggio = "<p style='color:red;'>Dati non validi.</p>";
+    if ($id_prodotto <= 0 || $tipo_lavorazione == '') {
+        $messaggio = "<div class='message error'>Controlla i dati inseriti.</div>";
     } else {
-        try {
-            $sql = "INSERT INTO Lavorazioni (id_prodotto, tipo_lavorazione, data_lavorazione)
-                    VALUES (?, ?, ?)";
+        $sql = "INSERT INTO Lavorazioni (id_prodotto, tipo_lavorazione, data_lavorazione) VALUES ($id_prodotto, '$tipo_lavorazione', '$data')";
 
-            $stmt = mysqli_prepare($conn, $sql);
-            mysqli_stmt_bind_param($stmt, "iss", $id_prodotto, $tipo_lavorazione, $data);
-            mysqli_stmt_execute($stmt);
-
-            $messaggio = "<p style='color:green;'>Lavorazione registrata con successo!</p>";
-
-        } catch (Exception $e) {
-            $messaggio = "<p style='color:red;'>Errore: " . htmlspecialchars($e->getMessage()) . "</p>";
+        if (mysqli_query($conn, $sql)) {
+            $messaggio = "<div class='message success'>Lavorazione registrata con successo.</div>";
+        } else {
+            $messaggio = "<div class='message error'>Errore durante il salvataggio della lavorazione.</div>";
         }
     }
+
+    $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome, tipo FROM Prodotti ORDER BY nome");
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registra lavorazione</title>
+    <title>Lavorazione</title>
+    <link rel="stylesheet" href="app.css">
 </head>
 <body>
-    <h1>Registra lavorazione</h1>
-    <p><a href="index.php">Torna alla dashboard</a></p>
+    <div class="container">
+        <div class="page-header">
+            <h1>Registra lavorazione</h1>
+            <p>Salva la lavorazione eseguita su un prodotto.</p>
+        </div>
 
-    <?php echo $messaggio; ?>
+        <?php echo $messaggio; ?>
 
-    <form method="POST" action="lavorazione.php">
-        <input type="number" name="id_prodotto" placeholder="ID prodotto" required><br><br>
+        <div class="panel">
+            <form method="POST">
+                <div class="form-group">
+                    <label>Prodotto</label>
+                    <select name="id_prodotto" required>
+                        <option value="">Seleziona prodotto</option>
+                        <?php while ($p = mysqli_fetch_assoc($prodotti)) { ?>
+                            <option value="<?php echo $p['id_prodotto']; ?>"><?php echo $p['nome']; ?> (<?php echo $p['tipo']; ?>)</option>
+                        <?php } ?>
+                    </select>
+                </div>
 
-        <input type="text" name="tipo_lavorazione" placeholder="Tipo lavorazione (es. essiccazione)" required><br><br>
+                <div class="form-group">
+                    <label>Tipo lavorazione</label>
+                    <input type="text" name="tipo_lavorazione" placeholder="Esempio: essiccazione" required>
+                </div>
 
-        <button type="submit">Registra lavorazione</button>
-    </form>
+                <div class="actions">
+                    <button type="submit">Salva lavorazione</button>
+                    <a class="btn btn-light" href="index.php">Torna alla dashboard</a>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
