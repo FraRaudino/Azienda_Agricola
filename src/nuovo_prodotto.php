@@ -6,124 +6,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_categoria = intval($_POST['id_categoria']);
     $tipo = $_POST['tipo'];
     $prezzo = floatval($_POST['prezzo']);
+    $um = $_POST['um'];
+    $qta = floatval($_POST['quantita']);
+    $data_prod = $_POST['data_produzione'];
+    $peso_netto = floatval($_POST['peso_netto']);
+    $id_sede = intval($_POST['id_sede']); 
 
-    // 1. Inserimento nel database PADRE (Prodotti)
-    $sql_prod = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
+    // 1. Inseriamo il prodotto generico
+    $sql = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
     
-    if (mysqli_query($conn, $sql_prod)) {
+    if (mysqli_query($conn, $sql)) {
         $id_p = mysqli_insert_id($conn);
-
-        // 2. Salviamo il prezzo nel Listino (Storicizzazione)
+        
+        // 2. Storico Prezzi (Traccia: "Il prezzo dei prodotti può subire variazioni nel tempo")
         mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
 
-        // 3. Salviamo nelle sottotabelle in base al tipo
+        // 3. Smistamento in base al tipo
         if ($tipo == 'Fresco') {
-            $um = $_POST['um_fresco'];
             mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES ($id_p, '$um')");
         } 
-        elseif ($tipo == 'Riserva') {
-            $peso = floatval($_POST['peso_iniziale']);
-            $um = $_POST['um_riserva'];
-            $data = $_POST['data_p'];
+        
+        if ($tipo == 'Riserva') {
+            // Traccia: "registrando il nome del prodotto, la data di produzione, la quantità prodotta (peso)"
             mysqli_query($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) 
-                                 VALUES ($id_p, $peso, '$um', '$data')");
+                                 VALUES ($id_p, $qta, '$um', '$data_prod')");
         }
-        elseif ($tipo == 'Confezionato') {
-            $pezzi = intval($_POST['pezzi']);
-            $peso_n = floatval($_POST['peso_n']);
-            $data = $_POST['data_c'];
+        
+        if ($tipo == 'Confezionato') {
+            // Traccia: "memorizzare la data di confezionamento, il peso netto della confezione... numero di confezioni"
             mysqli_query($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione, data_confezionamento) 
-                                 VALUES ($id_p, $pezzi, $peso_n, '$data')");
+                                 VALUES ($id_p, $qta, $peso_netto, '$data_prod')");
         }
-        echo "<script>alert('Prodotto salvato con successo!'); window.location='index.php';</script>";
+        
+        header("Location: index.php");
     }
 }
 
-$categorie = mysqli_query($conn, "SELECT * FROM Categorie");
+$res_cat = mysqli_query($conn, "SELECT * FROM Categorie");
+$res_sedi = mysqli_query($conn, "SELECT * FROM Sedi"); 
 ?>
 
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Aggiungi Prodotto</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-        .form-group { margin-bottom: 15px; border: 1px solid #eee; padding: 10px; border-radius: 5px; }
-        label { display: block; font-weight: bold; }
-        .hidden { display: none; }
-    </style>
-    <script>
-        function cambiaCampi() {
-            const tipo = document.getElementById('tipo').value;
-            document.getElementById('fresco').className = (tipo === 'Fresco') ? '' : 'hidden';
-            document.getElementById('riserva').className = (tipo === 'Riserva') ? '' : 'hidden';
-            document.getElementById('confezionato').className = (tipo === 'Confezionato') ? '' : 'hidden';
-        }
-    </script>
+    <title>Nuovo Prodotto</title>
 </head>
 <body>
-    <h1>Nuovo Prodotto Aziendale</h1>
+    <h1>Inserimento Nuovo Prodotto</h1>
     <form method="POST">
-        <div class="form-group">
-            <label>Nome Prodotto:</label>
-            <input type="text" name="nome" required placeholder="es. Miele di Castagno">
-        </div>
+        <fieldset>
+            <legend>Dati Base</legend>
+            <p>Nome Prodotto: <input type="text" name="nome" required></p>
+            
+            <p>Categoria: 
+                <select name="id_categoria">
+                    <?php while($c = mysqli_fetch_assoc($res_cat)) { ?>
+                        <option value="<?php echo $c['id_categoria']; ?>"><?php echo $c['nome']; ?></option>
+                    <?php } ?>
+                </select>
+            </p>
 
-        <div class="form-group">
-            <label>Categoria:</label>
-            <select name="id_categoria">
-                <?php while($c = mysqli_fetch_assoc($categorie)): ?>
-                    <option value="<?= $c['id_categoria'] ?>"><?= $c['nome'] ?></option>
-                <?php endwhile; ?>
-            </select>
-        </div>
+            <p>Tipo Prodotto (Fresco / Riserva sfusa / Confezionato): 
+                <select name="tipo">
+                    <option value="Fresco">Fresco (Vendita senza lavorazione)</option>
+                    <option value="Riserva">Riserva (Da conservare sfuso in grandi contenitori)</option>
+                    <option value="Confezionato">Confezionato (Vasetti, Bottiglie, ecc.)</option>
+                </select>
+            </p>
 
-        <div class="form-group">
-            <label>Prezzo Unitario (€):</label>
-            <input type="number" step="0.01" name="prezzo" required>
-        </div>
+            <p>Prezzo Unitario al momento dell'inserimento (€): <input type="number" step="0.01" name="prezzo" required></p>
+            
+            <p>Luogo di conservazione:
+                <select name="id_sede">
+                    <?php while($s = mysqli_fetch_assoc($res_sedi)) { ?>
+                        <option value="<?php echo $s['id_sede']; ?>"><?php echo $s['nome_sede']; ?></option>
+                    <?php } ?>
+                </select>
+            </p>
+        </fieldset>
 
-        <div class="form-group">
-            <label>Tipo di Prodotto:</label>
-            <select name="tipo" id="tipo" onchange="cambiaCampi()" required>
-                <option value="">-- Seleziona --</option>
-                <option value="Fresco">Fresco (Vendita immediata)</option>
-                <option value="Riserva">Riserva (Sfuso/Peso)</option>
-                <option value="Confezionato">Confezionato (Vasetti/Pezzi)</option>
-            </select>
-        </div>
+        <fieldset>
+            <legend>Dettagli Quantità e Produzione (Compilare in base al tipo)</legend>
+            
+            <p>Unità di Misura (per Fresco o Riserva): 
+                <select name="um">
+                    <option value="kg">Chilogrammi (kg)</option>
+                    <option value="litro">Litri (L)</option>
+                    <option value="pezzo">Pezzo</option>
+                </select>
+            </p>
 
-        <div id="fresco" class="hidden">
-            <div class="form-group">
-                <label>Unità di Misura:</label>
-                <select name="um_fresco"><option>kg</option><option>pezzo</option></select>
-            </div>
-        </div>
+            <p>Quantità Iniziale / Giacenza Pezzi: <br>
+                <small><i>(Inserire il peso totale per le Riserve, o il numero di vasetti per i Confezionati)</i></small><br>
+                <input type="number" step="0.1" name="quantita" value="0">
+            </p>
 
-        <div id="riserva" class="hidden">
-            <div class="form-group">
-                <label>Peso/Volume Iniziale:</label>
-                <input type="number" step="0.1" name="peso_iniziale">
-                <select name="um_riserva"><option>kg</option><option>litro</option></select>
-                <label>Data Produzione:</label>
-                <input type="date" name="data_p">
-            </div>
-        </div>
+            <p>Data Lavorazione / Confezionamento: <br>
+                <input type="date" name="data_produzione" value="<?php echo date('Y-m-d'); ?>">
+            </p>
 
-        <div id="confezionato" class="hidden">
-            <div class="form-group">
-                <label>Pezzi in Giacenza:</label>
-                <input type="number" name="pezzi">
-                <label>Peso Netto per pezzo (g/kg):</label>
-                <input type="number" step="0.1" name="peso_n">
-                <label>Data Confezionamento:</label>
-                <input type="date" name="data_c">
-            </div>
-        </div>
+            <p>Peso Netto Confezione (Solo per prodotti confezionati - es. 0.5 kg): <br>
+                <input type="number" step="0.01" name="peso_netto" value="0">
+            </p>
+        </fieldset>
 
-        <button type="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer;">Salva Prodotto</button>
-        <a href="index.php">Annulla</a>
+        <br>
+        <button type="submit">Salva nel Database</button>
+        <a href="index.php">Torna alla Dashboard</a>
     </form>
 </body>
 </html>
