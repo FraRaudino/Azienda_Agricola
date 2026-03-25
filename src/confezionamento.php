@@ -18,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mysqli_begin_transaction($conn);
 
         try {
-            // 1. Controllo disponibilità riserva
             $sql_check = "SELECT peso_totale_disponibile 
                           FROM Prodotti_Riserva 
                           WHERE id_prodotto = ?";
@@ -36,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Quantità insufficiente in riserva.");
             }
 
-            // 2. Scala riserva
             $sql1 = "UPDATE Prodotti_Riserva 
                      SET peso_totale_disponibile = peso_totale_disponibile - ? 
                      WHERE id_prodotto = ?";
@@ -44,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_bind_param($stmt1, "di", $quantita, $id_riserva);
             mysqli_stmt_execute($stmt1);
 
-            // 3. Aggiorna giacenza confezionati
             $sql2 = "UPDATE Prodotti_Confezionati 
                      SET giacenza_pezzi = giacenza_pezzi + ? 
                      WHERE id_prodotto = ?";
@@ -56,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Prodotto confezionato non trovato.");
             }
 
-            // 4. Salva storico confezionamento
             $sql3 = "INSERT INTO Confezionamenti 
                     (id_prodotto_riserva, id_prodotto_confezionato, data_confezionamento, quantita_utilizzata, numero_confezioni)
                     VALUES (?, ?, ?, ?, ?)";

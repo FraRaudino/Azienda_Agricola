@@ -1,21 +1,18 @@
 <?php
 include 'config.php';
 
-// 1. AGGIUNTA CATEGORIA (Con controllo duplicati come da traccia)
 if (isset($_POST['add_cat'])) {
     $nome = mysqli_real_escape_string($conn, trim($_POST['nome_cat']));
     if (!empty($nome)) {
-        // Verifichiamo se esiste già
         $check = mysqli_query($conn, "SELECT id_categoria FROM Categorie WHERE nome = '$nome'");
         if (mysqli_num_rows($check) == 0) {
             mysqli_query($conn, "INSERT INTO Categorie (nome) VALUES ('$nome')");
         }
     }
-    header("Location: gestione_sistema.php"); // Evita il reinvio del form con F5
+    header("Location: gestione_sistema.php"); 
     exit();
 }
 
-// 2. AGGIUNTA SEDE
 if (isset($_POST['add_sede'])) {
     $nome = mysqli_real_escape_string($conn, trim($_POST['nome_sede']));
     if (!empty($nome)) {
@@ -28,17 +25,14 @@ if (isset($_POST['add_sede'])) {
     exit();
 }
 
-// 3. ELIMINAZIONE PRODOTTO
 if (isset($_GET['del_prod'])) {
     $id = intval($_GET['del_prod']);
-    // Usiamo @ per ignorare l'errore se ci sono vincoli di integrità (es. vendite collegate)
-    // In alternativa, il database bloccherà l'azione se il prodotto è usato altrove
+    
     mysqli_query($conn, "DELETE FROM Prodotti WHERE id_prodotto = $id");
     header("Location: gestione_sistema.php");
     exit();
 }
 
-// 4. RECUPERO DATI PER LA VISUALIZZAZIONE
 $categorie = mysqli_query($conn, "SELECT * FROM Categorie ORDER BY nome ASC");
 $sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede ASC");
 $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY nome ASC");

@@ -12,28 +12,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $peso_netto = floatval($_POST['peso_netto']);
     $id_sede = intval($_POST['id_sede']); 
 
-    // 1. Inseriamo il prodotto generico
     $sql = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
     
     if (mysqli_query($conn, $sql)) {
         $id_p = mysqli_insert_id($conn);
         
-        // 2. Storico Prezzi (Traccia: "Il prezzo dei prodotti può subire variazioni nel tempo")
         mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
 
-        // 3. Smistamento in base al tipo
         if ($tipo == 'Fresco') {
             mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES ($id_p, '$um')");
         } 
         
         if ($tipo == 'Riserva') {
-            // Traccia: "registrando il nome del prodotto, la data di produzione, la quantità prodotta (peso)"
             mysqli_query($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) 
                                  VALUES ($id_p, $qta, '$um', '$data_prod')");
         }
         
         if ($tipo == 'Confezionato') {
-            // Traccia: "memorizzare la data di confezionamento, il peso netto della confezione... numero di confezioni"
             mysqli_query($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione, data_confezionamento) 
                                  VALUES ($id_p, $qta, $peso_netto, '$data_prod')");
         }

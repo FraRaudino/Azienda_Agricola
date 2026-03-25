@@ -1,14 +1,12 @@
 <?php
 include 'config.php';
 
-// Prendiamo l'ID del cliente se qualcuno lo ha scelto, altrimenti 0
 $id_scelto = 0;
 if (isset($_GET['filtra_cliente'])) {
     $id_scelto = intval($_GET['filtra_cliente']);
 }
 
-// 1. QUERY SEMPLICE: Se non ho scelto un cliente (0), prendo TUTTO. 
-// Se ho scelto un cliente, prendo solo le sue vendite.
+
 if ($id_scelto == 0) {
     $sql = "SELECT v.*, c.nome as cliente, p.nome as prodotto, dv.quantita 
             FROM Vendite v

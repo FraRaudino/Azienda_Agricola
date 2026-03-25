@@ -1,7 +1,6 @@
 <?php
 include 'config.php';
 
-// Salvataggio nuovo cliente
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = mysqli_real_escape_string($conn, $_POST['nome']);
     $nickname = mysqli_real_escape_string($conn, $_POST['nickname']);

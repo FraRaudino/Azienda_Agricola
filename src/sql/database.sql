@@ -114,16 +114,18 @@ INSERT INTO Clienti (nome, nickname, contatto) VALUES
 ('Cliente Occasionale', 'ClienteX', NULL),
 ('Mario Rossi', 'Amico', 'mario@example.com');
 
+
 INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES
-('Miele sfuso', 3, 'Riserva'),
-('Miele vasetto 500g', 3, 'Confezionato'),
-('Mele fresche', 1, 'Fresco');
+('Banana', 1, 'Riserva'),
+('Caco', 1, 'Riserva'),
+('Banana confezionata', 1, 'Confezionato');
 
 INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES
-(1, 50.00, 'kg', CURDATE());
+(1, 50.00, 'kg', CURDATE()),
+(2, 30.00, 'kg', CURDATE());
 
 INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES
-(2, 0, 0.50);
+(3, 0, 0.50);
 
 INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES
 (3, 'kg');
