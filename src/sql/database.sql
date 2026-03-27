@@ -21,14 +21,17 @@ CREATE TABLE IF NOT EXISTS Prodotti (
     id_prodotto INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     id_categoria INT,
+    id_sede INT NULL,
     tipo ENUM('Fresco', 'Riserva', 'Confezionato') NOT NULL,
-    FOREIGN KEY (id_categoria) REFERENCES Categorie(id_categoria)
+    FOREIGN KEY (id_categoria) REFERENCES Categorie(id_categoria),
+    FOREIGN KEY (id_sede) REFERENCES Sedi(id_sede)
 );
 
 -- 3. Sottotabelle per le tipologie (Specializzazione)
 CREATE TABLE IF NOT EXISTS Prodotti_Freschi (
     id_prodotto INT PRIMARY KEY,
     unita_misura VARCHAR(20),
+    quantita_disponibile DECIMAL(10,2) DEFAULT NULL,
     FOREIGN KEY (id_prodotto) REFERENCES Prodotti(id_prodotto) ON DELETE CASCADE
 );
 
@@ -77,7 +80,6 @@ CREATE TABLE IF NOT EXISTS Dettaglio_Vendite (
     FOREIGN KEY (id_prodotto) REFERENCES Prodotti(id_prodotto)
 );
 
-
 CREATE TABLE IF NOT EXISTS Confezionamenti (
     id_confezionamento INT AUTO_INCREMENT PRIMARY KEY,
     id_prodotto_riserva INT NOT NULL,
@@ -85,7 +87,6 @@ CREATE TABLE IF NOT EXISTS Confezionamenti (
     data_confezionamento DATE NOT NULL,
     quantita_utilizzata DECIMAL(10,2) NOT NULL,
     numero_confezioni INT NOT NULL,
-    
     FOREIGN KEY (id_prodotto_riserva) REFERENCES Prodotti(id_prodotto),
     FOREIGN KEY (id_prodotto_confezionato) REFERENCES Prodotti(id_prodotto)
 );
@@ -114,23 +115,24 @@ INSERT INTO Clienti (nome, nickname, contatto) VALUES
 ('Cliente Occasionale', 'ClienteX', NULL),
 ('Mario Rossi', 'Amico', 'mario@example.com');
 
+INSERT INTO Prodotti (nome, id_categoria, id_sede, tipo) VALUES
+('Mele', 1, 3, 'Fresco'),
+('Banana', 1, 1, 'Riserva'),
+('Caco', 1, 1, 'Riserva'),
+('Banana confezionata', 1, 1, 'Confezionato');
 
-INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES
-('Banana', 1, 'Riserva'),
-('Caco', 1, 'Riserva'),
-('Banana confezionata', 1, 'Confezionato');
+INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura, quantita_disponibile) VALUES
+(1, 'kg', 25.00);
 
 INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES
-(1, 50.00, 'kg', CURDATE()),
-(2, 30.00, 'kg', CURDATE());
+(2, 50.00, 'kg', CURDATE()),
+(3, 30.00, 'kg', CURDATE());
 
 INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES
-(3, 0, 0.50);
-
-INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES
-(3, 'kg');
+(4, 0, 0.50);
 
 INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES
-(1, 12.00),
-(2, 8.00),
-(3, 3.50);
+(1, 2.80),
+(2, 12.00),
+(3, 8.00),
+(4, 3.50);

@@ -2,7 +2,6 @@
 include 'config.php';
 
 $messaggio = "";
-
 $clienti = mysqli_query($conn, "SELECT id_cliente, nome, nickname FROM Clienti ORDER BY nome");
 $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome, tipo FROM Prodotti ORDER BY nome");
 
@@ -25,6 +24,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($ok) {
             $tipo = $riga_prodotto['tipo'];
+
+            if ($tipo == 'Fresco') {
+                $riga_fresco = mysqli_fetch_assoc(mysqli_query($conn, "SELECT quantita_disponibile FROM Prodotti_Freschi WHERE id_prodotto = $id_prodotto"));
+                if ($riga_fresco && $riga_fresco['quantita_disponibile'] !== null) {
+                    if ($riga_fresco['quantita_disponibile'] < $quantita) {
+                        $messaggio = "<div class='message error'>Quantità fresca insufficiente.</div>";
+                        $ok = false;
+                    } else {
+                        mysqli_query($conn, "UPDATE Prodotti_Freschi SET quantita_disponibile = quantita_disponibile - $quantita WHERE id_prodotto = $id_prodotto");
+                    }
+                }
+            }
 
             if ($tipo == 'Riserva') {
                 $riga_riserva = mysqli_fetch_assoc(mysqli_query($conn, "SELECT peso_totale_disponibile FROM Prodotti_Riserva WHERE id_prodotto = $id_prodotto"));
@@ -102,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <select name="id_cliente" required>
                             <option value="">Seleziona cliente</option>
                             <?php while ($c = mysqli_fetch_assoc($clienti)) { ?>
-                                <option value="<?php echo $c['id_cliente']; ?>"><?php echo $c['nome']; ?><?php if ($c['nickname'] != '') { echo ' - ' . $c['nickname']; } ?></option>
+                                <option value="<?php echo $c['id_cliente']; ?>"><?php echo htmlspecialchars($c['nome']); ?><?php if ($c['nickname'] != '') { echo ' - ' . htmlspecialchars($c['nickname']); } ?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -112,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <select name="id_prodotto" required>
                             <option value="">Seleziona prodotto</option>
                             <?php while ($p = mysqli_fetch_assoc($prodotti)) { ?>
-                                <option value="<?php echo $p['id_prodotto']; ?>"><?php echo $p['nome']; ?> (<?php echo $p['tipo']; ?>)</option>
+                                <option value="<?php echo $p['id_prodotto']; ?>"><?php echo htmlspecialchars($p['nome']); ?> (<?php echo htmlspecialchars($p['tipo']); ?>)</option>
                             <?php } ?>
                         </select>
                     </div>

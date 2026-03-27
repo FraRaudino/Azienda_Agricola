@@ -6,6 +6,7 @@ $messaggio = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nome = mysqli_real_escape_string($conn, trim($_POST['nome']));
     $id_categoria = intval($_POST['id_categoria']);
+    $id_sede = intval($_POST['id_sede']);
     $tipo = mysqli_real_escape_string($conn, $_POST['tipo']);
     $prezzo = floatval($_POST['prezzo']);
     $um = mysqli_real_escape_string($conn, $_POST['um']);
@@ -13,17 +14,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $data_prod = mysqli_real_escape_string($conn, $_POST['data_produzione']);
     $peso_netto = floatval($_POST['peso_netto']);
 
-    if ($nome == '' || $id_categoria <= 0 || $prezzo <= 0) {
+    if ($nome == '' || $id_categoria <= 0 || $id_sede <= 0 || $prezzo <= 0) {
         $messaggio = "<div class='message error'>Controlla i dati inseriti.</div>";
     } else {
-        $sql = "INSERT INTO Prodotti (nome, id_categoria, tipo) VALUES ('$nome', $id_categoria, '$tipo')";
+        $sql = "INSERT INTO Prodotti (nome, id_categoria, id_sede, tipo) VALUES ('$nome', $id_categoria, $id_sede, '$tipo')";
 
         if (mysqli_query($conn, $sql)) {
             $id_p = mysqli_insert_id($conn);
             mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
 
             if ($tipo == 'Fresco') {
-                mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura) VALUES ($id_p, '$um')");
+                mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura, quantita_disponibile) VALUES ($id_p, '$um', $qta)");
             }
 
             if ($tipo == 'Riserva') {
@@ -75,7 +76,7 @@ $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
                         <label>Categoria</label>
                         <select name="id_categoria" required>
                             <?php while ($c = mysqli_fetch_assoc($res_cat)) { ?>
-                                <option value="<?php echo $c['id_categoria']; ?>"><?php echo $c['nome']; ?></option>
+                                <option value="<?php echo $c['id_categoria']; ?>"><?php echo htmlspecialchars($c['nome']); ?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -96,9 +97,9 @@ $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
 
                     <div class="form-group">
                         <label>Luogo di conservazione</label>
-                        <select name="id_sede">
+                        <select name="id_sede" required>
                             <?php while ($s = mysqli_fetch_assoc($res_sedi)) { ?>
-                                <option value="<?php echo $s['id_sede']; ?>"><?php echo $s['nome_sede']; ?></option>
+                                <option value="<?php echo $s['id_sede']; ?>"><?php echo htmlspecialchars($s['nome_sede']); ?></option>
                             <?php } ?>
                         </select>
                     </div>
@@ -108,6 +109,7 @@ $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
                         <select name="um">
                             <option value="kg">kg</option>
                             <option value="litro">litro</option>
+                            <option value="grammo">grammo</option>
                             <option value="pezzo">pezzo</option>
                         </select>
                     </div>

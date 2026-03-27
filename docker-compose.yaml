@@ -20,7 +20,6 @@ services:
       MYSQL_DATABASE: azienda_agricola 
     volumes:
       - db_data:/var/lib/mysql
-      # Qui usiamo il nome reale del tuo file: database.sql
       - ./src/sql/database.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
