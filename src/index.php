@@ -18,7 +18,7 @@ $sql = "SELECT p.id_prodotto, p.nome, p.tipo, c.nome AS categoria, s.nome_sede,
         LEFT JOIN Prodotti_Confezionati pc ON p.id_prodotto = pc.id_prodotto
         ORDER BY p.nome ASC";
 
-$risultato = mysqli_query($conn, $sql);
+ $risultato = mysqli_query($conn, $sql);
 
 if (!$risultato) {
     die("Errore nella query: " . mysqli_error($conn));
