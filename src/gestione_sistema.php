@@ -2,11 +2,56 @@
 include 'config.php';
 
 if (isset($_POST['add_cat'])) {
-    $nome = mysqli_real_escape_string($conn, trim($_POST['nome_cat']));
-    if ($nome != '') {
-        $check = mysqli_query($conn, "SELECT id_categoria FROM Categorie WHERE nome = '$nome'");
-        if (mysqli_num_rows($check) == 0) {
-            mysqli_query($conn, "INSERT INTO Categorie (nome) VALUES ('$nome')");
+
+     $id = intval($_POST['del_cat']);
+
+    if ($id > 0) {
+        $stmt = mysqli_prepare($conn, "DELETE FROM Categorie WHERE id_categoria = ?");
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    header("Location: gestione_sistema.php");
+    exit();
+
+
+    if (isset($_POST['del_sede'])) {
+    $id = intval($_POST['del_sede']);
+
+    if ($id > 0) {
+        $stmt = mysqli_prepare($conn, "DELETE FROM Sedi WHERE id_sede = ?");
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    header("Location: gestione_sistema.php");
+    exit();
+}
+
+
+    $nome = trim($_POST['nome_cat'] ?? '');
+
+    if ($nome == '') {
+        header("Location: gestione_sistema.php?err=nome_cat_vuoto");
+        exit();
+    } elseif (mb_strlen($nome) > 80) {
+        header("Location: gestione_sistema.php?err=nome_cat_lungo");
+        exit();
+    } else {
+        $check = mysqli_prepare($conn, "SELECT id_categoria FROM Categorie WHERE nome = ?");
+        mysqli_stmt_bind_param($check, 's', $nome);
+        mysqli_stmt_execute($check);
+        mysqli_stmt_store_result($check);
+        $esiste = mysqli_stmt_num_rows($check) > 0;
+        mysqli_stmt_close($check);
+
+        if (!$esiste) {
+            $stmt = mysqli_prepare($conn, "INSERT INTO Categorie (nome) VALUES (?)");
+            mysqli_stmt_bind_param($stmt, 's', $nome);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
         }
     }
     header("Location: gestione_sistema.php");
@@ -14,11 +59,27 @@ if (isset($_POST['add_cat'])) {
 }
 
 if (isset($_POST['add_sede'])) {
-    $nome = mysqli_real_escape_string($conn, trim($_POST['nome_sede']));
-    if ($nome != '') {
-        $check = mysqli_query($conn, "SELECT id_sede FROM Sedi WHERE nome_sede = '$nome'");
-        if (mysqli_num_rows($check) == 0) {
-            mysqli_query($conn, "INSERT INTO Sedi (nome_sede) VALUES ('$nome')");
+    $nome = trim($_POST['nome_sede'] ?? '');
+
+    if ($nome == '') {
+        header("Location: gestione_sistema.php?err=nome_sede_vuoto");
+        exit();
+    } elseif (mb_strlen($nome) > 80) {
+        header("Location: gestione_sistema.php?err=nome_sede_lungo");
+        exit();
+    } else {
+        $check = mysqli_prepare($conn, "SELECT id_sede FROM Sedi WHERE nome_sede = ?");
+        mysqli_stmt_bind_param($check, 's', $nome);
+        mysqli_stmt_execute($check);
+        mysqli_stmt_store_result($check);
+        $esiste = mysqli_stmt_num_rows($check) > 0;
+        mysqli_stmt_close($check);
+
+        if (!$esiste) {
+            $stmt = mysqli_prepare($conn, "INSERT INTO Sedi (nome_sede) VALUES (?)");
+            mysqli_stmt_bind_param($stmt, 's', $nome);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
         }
     }
     header("Location: gestione_sistema.php");
@@ -27,14 +88,31 @@ if (isset($_POST['add_sede'])) {
 
 if (isset($_GET['del_prod'])) {
     $id = intval($_GET['del_prod']);
-    mysqli_query($conn, "DELETE FROM Prodotti WHERE id_prodotto = $id");
+    if ($id > 0) {
+        $stmt = mysqli_prepare($conn, "DELETE FROM Prodotti WHERE id_prodotto = ?");
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
     header("Location: gestione_sistema.php");
     exit();
 }
 
+// Messaggi di errore da redirect
+$errori = [
+    'nome_cat_vuoto'  => "Il nome della categoria non può essere vuoto.",
+    'nome_cat_lungo'  => "Il nome della categoria è troppo lungo (max 80 caratteri).",
+    'nome_sede_vuoto' => "Il nome della sede non può essere vuoto.",
+    'nome_sede_lungo' => "Il nome della sede è troppo lungo (max 80 caratteri).",
+];
+$messaggio = "";
+if (isset($_GET['err']) && array_key_exists($_GET['err'], $errori)) {
+    $messaggio = "<div class='message error'>" . $errori[$_GET['err']] . "</div>";
+}
+
 $categorie = mysqli_query($conn, "SELECT * FROM Categorie ORDER BY nome ASC");
-$sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede ASC");
-$prodotti = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY nome ASC");
+$sedi      = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede ASC");
+$prodotti  = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY nome ASC");
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -51,20 +129,30 @@ $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY
             <p>Gestisci categorie, sedi e prodotti registrati.</p>
         </div>
 
+        <?php echo $messaggio; ?>
+
         <div class="card-grid footer-space">
             <div class="panel">
                 <h2>Nuova categoria</h2>
                 <form method="POST">
                     <div class="form-group">
                         <label>Nome categoria</label>
-                        <input type="text" name="nome_cat" required>
+                        <input type="text" name="nome_cat" maxlength="80" required>
                     </div>
                     <button type="submit" name="add_cat">Aggiungi categoria</button>
                 </form>
                 <h3>Elenco categorie</h3>
                 <ul class="list-clean">
                     <?php while ($c = mysqli_fetch_assoc($categorie)) { ?>
-                        <li><?php echo $c['nome']; ?></li>
+                        <li>
+                            <?php echo htmlspecialchars($c['nome']); ?>
+                                <form method="POST" style="display:inline;">
+                                    <input type="hidden" name="del_cat" value="<?php echo $c['id_categoria']; ?>">
+                                    <button class="btn btn-danger" onclick="return confirm('Eliminare questa categoria?');">
+                                        Elimina
+                                    </button>
+                                </form>
+                        </li>
                     <?php } ?>
                 </ul>
             </div>
@@ -74,14 +162,23 @@ $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY
                 <form method="POST">
                     <div class="form-group">
                         <label>Nome sede</label>
-                        <input type="text" name="nome_sede" required>
+                        <input type="text" name="nome_sede" maxlength="80" required>
                     </div>
                     <button type="submit" name="add_sede">Aggiungi sede</button>
                 </form>
                 <h3>Elenco sedi</h3>
                 <ul class="list-clean">
                     <?php while ($s = mysqli_fetch_assoc($sedi)) { ?>
-                        <li><?php echo $s['nome_sede']; ?></li>
+                        <li>
+                            <?php echo htmlspecialchars($s['nome_sede']); ?>
+                        
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="del_sede" value="<?php echo $s['id_sede']; ?>">
+                                <button class="btn btn-danger" onclick="return confirm('Eliminare questa sede?');">
+                                    Elimina
+                                </button>
+                            </form>
+                        </li>
                     <?php } ?>
                 </ul>
             </div>
@@ -97,7 +194,7 @@ $prodotti = mysqli_query($conn, "SELECT id_prodotto, nome FROM Prodotti ORDER BY
                 </tr>
                 <?php while ($p = mysqli_fetch_assoc($prodotti)) { ?>
                     <tr>
-                        <td><?php echo $p['nome']; ?></td>
+                        <td><?php echo htmlspecialchars($p['nome']); ?></td>
                         <td><a class="btn btn-danger" href="?del_prod=<?php echo $p['id_prodotto']; ?>" onclick="return confirm('Vuoi eliminare questo prodotto?');">Elimina</a></td>
                     </tr>
                 <?php } ?>

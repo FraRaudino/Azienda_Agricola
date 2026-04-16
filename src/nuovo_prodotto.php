@@ -4,47 +4,106 @@ include 'config.php';
 $messaggio = "";
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = mysqli_real_escape_string($conn, trim($_POST['nome']));
-    $id_categoria = intval($_POST['id_categoria']);
-    $id_sede = intval($_POST['id_sede']);
-    $tipo = mysqli_real_escape_string($conn, $_POST['tipo']);
-    $prezzo = floatval($_POST['prezzo']);
-    $um = mysqli_real_escape_string($conn, $_POST['um']);
-    $qta = floatval($_POST['quantita']);
-    $data_prod = mysqli_real_escape_string($conn, $_POST['data_produzione']);
-    $peso_netto = floatval($_POST['peso_netto']);
+    $nome       = trim($_POST['nome'] ?? '');
+    $id_categoria = intval($_POST['id_categoria'] ?? 0);
+    $id_sede    = intval($_POST['id_sede'] ?? 0);
+    $tipo       = trim($_POST['tipo'] ?? '');
+    $prezzo     = floatval($_POST['prezzo'] ?? 0);
+    $um         = trim($_POST['um'] ?? '');
+    $qta        = floatval($_POST['quantita'] ?? 0);
+    $data_prod  = trim($_POST['data_produzione'] ?? '');
+    $peso_netto = floatval($_POST['peso_netto'] ?? 0);
 
-    if ($nome == '' || $id_categoria <= 0 || $id_sede <= 0 || $prezzo <= 0) {
-        $messaggio = "<div class='message error'>Controlla i dati inseriti.</div>";
+    $tipi_validi = ['Fresco', 'Riserva', 'Confezionato'];
+    $um_valide   = ['kg', 'litro', 'grammo', 'pezzo'];
+
+    if ($nome == '') {
+        $messaggio = "<div class='message error'>Inserisci il nome del prodotto.</div>";
+    } elseif (mb_strlen($nome) > 100) {
+        $messaggio = "<div class='message error'>Il nome è troppo lungo (max 100 caratteri).</div>";
+    } elseif ($id_categoria <= 0) {
+        $messaggio = "<div class='message error'>Seleziona una categoria valida.</div>";
+    } elseif ($id_sede <= 0) {
+        $messaggio = "<div class='message error'>Seleziona una sede valida.</div>";
+    } elseif (!in_array($tipo, $tipi_validi)) {
+        $messaggio = "<div class='message error'>Tipo prodotto non valido.</div>";
+    } elseif ($prezzo <= 0 || $prezzo > 99999) {
+        $messaggio = "<div class='message error'>Inserisci un prezzo valido (tra 0.01 e 99999).</div>";
+    } elseif (!in_array($um, $um_valide)) {
+        $messaggio = "<div class='message error'>Unità di misura non valida.</div>";
+    } elseif ($qta < 0) {
+        $messaggio = "<div class='message error'>La quantità non può essere negativa.</div>";
+    } elseif ($tipo == 'Riserva' && $data_prod != '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_prod)) {
+        $messaggio = "<div class='message error'>Data produzione non valida.</div>";
+    } elseif ($tipo == 'Confezionato' && $peso_netto < 0) {
+        $messaggio = "<div class='message error'>Il peso netto non può essere negativo.</div>";
     } else {
-        $sql = "INSERT INTO Prodotti (nome, id_categoria, id_sede, tipo) VALUES ('$nome', $id_categoria, $id_sede, '$tipo')";
+        // Verifica che categoria e sede esistano
+        $stmt_cat = mysqli_prepare($conn, "SELECT id_categoria FROM Categorie WHERE id_categoria = ?");
+        mysqli_stmt_bind_param($stmt_cat, 'i', $id_categoria);
+        mysqli_stmt_execute($stmt_cat);
+        mysqli_stmt_store_result($stmt_cat);
+        $cat_ok = mysqli_stmt_num_rows($stmt_cat) > 0;
+        mysqli_stmt_close($stmt_cat);
 
-        if (mysqli_query($conn, $sql)) {
-            $id_p = mysqli_insert_id($conn);
-            mysqli_query($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES ($id_p, $prezzo)");
+        $stmt_sede = mysqli_prepare($conn, "SELECT id_sede FROM Sedi WHERE id_sede = ?");
+        mysqli_stmt_bind_param($stmt_sede, 'i', $id_sede);
+        mysqli_stmt_execute($stmt_sede);
+        mysqli_stmt_store_result($stmt_sede);
+        $sede_ok = mysqli_stmt_num_rows($stmt_sede) > 0;
+        mysqli_stmt_close($stmt_sede);
 
-            if ($tipo == 'Fresco') {
-                mysqli_query($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura, quantita_disponibile) VALUES ($id_p, '$um', $qta)");
-            }
-
-            if ($tipo == 'Riserva') {
-                mysqli_query($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES ($id_p, $qta, '$um', '$data_prod')");
-            }
-
-            if ($tipo == 'Confezionato') {
-                $pezzi = intval($qta);
-                mysqli_query($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES ($id_p, $pezzi, $peso_netto)");
-            }
-
-            header("Location: index.php");
-            exit();
+        if (!$cat_ok) {
+            $messaggio = "<div class='message error'>Categoria non trovata.</div>";
+        } elseif (!$sede_ok) {
+            $messaggio = "<div class='message error'>Sede non trovata.</div>";
         } else {
-            $messaggio = "<div class='message error'>Errore durante il salvataggio del prodotto.</div>";
+            $stmt = mysqli_prepare($conn, "INSERT INTO Prodotti (nome, id_categoria, id_sede, tipo) VALUES (?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, 'siis', $nome, $id_categoria, $id_sede, $tipo);
+
+            if (mysqli_stmt_execute($stmt)) {
+                $id_p = mysqli_insert_id($conn);
+                mysqli_stmt_close($stmt);
+
+                $stmt_lp = mysqli_prepare($conn, "INSERT INTO Listino_Prezzi (id_prodotto, prezzo_unitario) VALUES (?, ?)");
+                mysqli_stmt_bind_param($stmt_lp, 'id', $id_p, $prezzo);
+                mysqli_stmt_execute($stmt_lp);
+                mysqli_stmt_close($stmt_lp);
+
+                if ($tipo == 'Fresco') {
+                    $stmt_f = mysqli_prepare($conn, "INSERT INTO Prodotti_Freschi (id_prodotto, unita_misura, quantita_disponibile) VALUES (?, ?, ?)");
+                    mysqli_stmt_bind_param($stmt_f, 'isd', $id_p, $um, $qta);
+                    mysqli_stmt_execute($stmt_f);
+                    mysqli_stmt_close($stmt_f);
+                }
+
+                if ($tipo == 'Riserva') {
+                    $data_prod_val = ($data_prod != '') ? $data_prod : date('Y-m-d');
+                    $stmt_r = mysqli_prepare($conn, "INSERT INTO Prodotti_Riserva (id_prodotto, peso_totale_disponibile, unita_misura, data_produzione) VALUES (?, ?, ?, ?)");
+                    mysqli_stmt_bind_param($stmt_r, 'idss', $id_p, $qta, $um, $data_prod_val);
+                    mysqli_stmt_execute($stmt_r);
+                    mysqli_stmt_close($stmt_r);
+                }
+
+                if ($tipo == 'Confezionato') {
+                    $pezzi = intval($qta);
+                    $stmt_c = mysqli_prepare($conn, "INSERT INTO Prodotti_Confezionati (id_prodotto, giacenza_pezzi, peso_netto_confezione) VALUES (?, ?, ?)");
+                    mysqli_stmt_bind_param($stmt_c, 'iid', $id_p, $pezzi, $peso_netto);
+                    mysqli_stmt_execute($stmt_c);
+                    mysqli_stmt_close($stmt_c);
+                }
+
+                header("Location: index.php");
+                exit();
+            } else {
+                mysqli_stmt_close($stmt);
+                $messaggio = "<div class='message error'>Errore durante il salvataggio del prodotto.</div>";
+            }
         }
     }
 }
 
-$res_cat = mysqli_query($conn, "SELECT * FROM Categorie ORDER BY nome");
+$res_cat  = mysqli_query($conn, "SELECT * FROM Categorie ORDER BY nome");
 $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
 ?>
 <!DOCTYPE html>
@@ -69,7 +128,7 @@ $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Nome prodotto</label>
-                        <input type="text" name="nome" required>
+                        <input type="text" name="nome" maxlength="100" required>
                     </div>
 
                     <div class="form-group">
@@ -92,7 +151,7 @@ $res_sedi = mysqli_query($conn, "SELECT * FROM Sedi ORDER BY nome_sede");
 
                     <div class="form-group">
                         <label>Prezzo unitario</label>
-                        <input type="number" step="0.01" min="0.01" name="prezzo" required>
+                        <input type="number" step="0.01" min="0.01" max="99999" name="prezzo" required>
                     </div>
 
                     <div class="form-group">

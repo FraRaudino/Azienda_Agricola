@@ -4,19 +4,38 @@ include 'config.php';
 $messaggio = "";
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = mysqli_real_escape_string($conn, trim($_POST['nome']));
-    $nickname = mysqli_real_escape_string($conn, trim($_POST['nickname']));
-    $contatto = mysqli_real_escape_string($conn, trim($_POST['contatto']));
+    $nome     = trim($_POST['nome'] ?? '');
+    $nickname = trim($_POST['nickname'] ?? '');
+    $contatto = trim($_POST['contatto'] ?? '');
 
     if ($nome == '') {
         $messaggio = "<div class='message error'>Inserisci il nome del cliente.</div>";
+    } elseif (mb_strlen($nome) > 100) {
+        $messaggio = "<div class='message error'>Il nome è troppo lungo (max 100 caratteri).</div>";
+    } elseif (mb_strlen($nickname) > 50) {
+        $messaggio = "<div class='message error'>Il nickname è troppo lungo (max 50 caratteri).</div>";
+    } elseif (mb_strlen($contatto) > 100) {
+        $messaggio = "<div class='message error'>Il contatto è troppo lungo (max 100 caratteri).</div>";
     } else {
-        $sql = "INSERT INTO Clienti (nome, nickname, contatto) VALUES ('$nome', '$nickname', '$contatto')";
-        if (mysqli_query($conn, $sql)) {
-            $messaggio = "<div class='message success'>Cliente registrato con successo.</div>";
+        $check = mysqli_prepare($conn, "SELECT id_cliente FROM Clienti WHERE nome = ?");
+        mysqli_stmt_bind_param($check, 's', $nome);
+        mysqli_stmt_execute($check);
+        mysqli_stmt_store_result($check);
+
+        if (mysqli_stmt_num_rows($check) > 0) {
+            $messaggio = "<div class='message error'>Esiste già un cliente con questo nome.</div>";
         } else {
-            $messaggio = "<div class='message error'>Errore durante il salvataggio del cliente.</div>";
+            $stmt = mysqli_prepare($conn, "INSERT INTO Clienti (nome, nickname, contatto) VALUES (?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, 'sss', $nome, $nickname, $contatto);
+
+            if (mysqli_stmt_execute($stmt)) {
+                $messaggio = "<div class='message success'>Cliente registrato con successo.</div>";
+            } else {
+                $messaggio = "<div class='message error'>Errore durante il salvataggio del cliente.</div>";
+            }
+            mysqli_stmt_close($stmt);
         }
+        mysqli_stmt_close($check);
     }
 }
 
@@ -45,15 +64,15 @@ $res = mysqli_query($conn, "SELECT * FROM Clienti ORDER BY nome ASC");
                 <form method="POST">
                     <div class="form-group">
                         <label>Nome e cognome</label>
-                        <input type="text" name="nome" required>
+                        <input type="text" name="nome" maxlength="100" required>
                     </div>
                     <div class="form-group">
                         <label>Nickname</label>
-                        <input type="text" name="nickname">
+                        <input type="text" name="nickname" maxlength="50">
                     </div>
                     <div class="form-group">
                         <label>Contatto</label>
-                        <input type="text" name="contatto">
+                        <input type="text" name="contatto" maxlength="100">
                     </div>
                     <div class="actions">
                         <button type="submit">Registra cliente</button>
@@ -72,9 +91,9 @@ $res = mysqli_query($conn, "SELECT * FROM Clienti ORDER BY nome ASC");
                     </tr>
                     <?php while ($row = mysqli_fetch_assoc($res)) { ?>
                         <tr>
-                            <td><?php echo $row['nome']; ?></td>
-                            <td><?php echo $row['nickname']; ?></td>
-                            <td><?php echo $row['contatto']; ?></td>
+                            <td><?php echo htmlspecialchars($row['nome'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($row['nickname'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($row['contatto'] ?? ''); ?></td>
                         </tr>
                     <?php } ?>
                 </table>
