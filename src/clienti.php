@@ -4,9 +4,10 @@ include 'config.php';
 $messaggio = "";
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome     = trim($_POST['nome'] ?? '');
-    $nickname = trim($_POST['nickname'] ?? '');
-    $contatto = trim($_POST['contatto'] ?? '');
+    $nome = isset($_POST['nome']) ? trim($_POST['nome']) : '';
+    $nickname = isset($_POST['nickname']) ? trim($_POST['nickname']) : '';
+    $contatto = isset($_POST['contatto']) ? trim($_POST['contatto']) : '';
+}
 
     if ($nome == '') {
         $messaggio = "<div class='message error'>Inserisci il nome del cliente.</div>";
@@ -37,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         mysqli_stmt_close($check);
     }
-}
 
 $res = mysqli_query($conn, "SELECT * FROM Clienti ORDER BY nome ASC");
 ?>
@@ -91,9 +91,9 @@ $res = mysqli_query($conn, "SELECT * FROM Clienti ORDER BY nome ASC");
                     </tr>
                     <?php while ($row = mysqli_fetch_assoc($res)) { ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($row['nome'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($row['nickname'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($row['contatto'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($row['nome']); ?></td>
+                            <td><?php echo htmlspecialchars($row['nickname']); ?></td>
+                            <td><?php echo htmlspecialchars($row['contatto']); ?></td>
                         </tr>
                     <?php } ?>
                 </table>
